@@ -104,4 +104,13 @@ namespace GalaManager1.Models
         [DarkColumn(IsMapped = true, IsKey = false)]
         public DateTime Comprado { get; set; }
     }
+    [DarkTable(IsMappedByLabels = false, IsStoreProcedure = false, IsView = true)]
+    public class viewMaxVentacomprador
+    {
+        [DarkColumn(IsMapped = true, IsKey = false)]
+        public string NombreCompleto { get; set; }
+        [DarkColumn(IsMapped = true, IsKey = false)]
+        public float Monto { get; set; }
+
+    }
 }

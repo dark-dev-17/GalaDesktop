@@ -11,6 +11,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Windows.Forms.DataVisualization.Charting;
 
 namespace GalaDesktop
 {
@@ -21,8 +22,10 @@ namespace GalaDesktop
         private Comprador comprador;
         private List<Abono> ListaAbonos;
         private List<Venta> ListaVentas;
+        private List<Comprador> ListaCompradores;
         private List<int> ListaAbonosEliminados;
         private List<int> ListaVentaEliminados;
+        private List<int> ListaCompradorEliminados;
         #endregion
 
         #region Atributos de sistema
@@ -43,6 +46,7 @@ namespace GalaDesktop
             Gala.LoadObject(GalaObject.ColeccionDato);
             Gala.LoadObject(GalaObject.Producto);
             Gala.LoadObject(GalaObject.Venta);
+            Gala.LoadObject(GalaObject.viewMaxVentacomprador);
             #endregion
 
 
@@ -54,9 +58,37 @@ namespace GalaDesktop
 
         private void loadData()
         {
-            Funciones.ComboRender(cmb_Comprador, Gala.Comprador.Get(), "IdComprador", "NombreCompleto");          
+            Funciones.ComboRender(cmb_Comprador, Gala.Comprador.GetOpenquery("Where activo = 1", "order by nombrecompleto asc"), "IdComprador", "NombreCompleto");
+            ClientesRefresh(true);
         }
+        public void LoadDashboard()
+        {
+            this.chart1.Series.Clear();
 
+            // Data arrays
+            string[] seriesArray = { "Venta", "Abono" };
+            object venta = Gala.Venta.GetColun($"select sum(Monto) from venta where Creado between '{dateTimePicker1.Value.ToString("yyyy-MM-dd")}' and '{dateTimePicker2.Value.ToString("yyyy-MM-dd")}'");
+            object Abono = Gala.Abono.GetColun($"select sum(Monto) from Abono where Creado between '{dateTimePicker1.Value.ToString("yyyy-MM-dd")}' and '{dateTimePicker2.Value.ToString("yyyy-MM-dd")}'");
+            float[] pointsArray = { float.Parse(venta +""), float.Parse(Abono + "") };
+            // Set palette
+            this.chart1.Palette = ChartColorPalette.EarthTones;
+            // Set title
+            this.chart1.Titles.Add("Animals");
+            // Add series.
+            for (int i = 0; i < seriesArray.Length; i++)
+            {
+                Series series = this.chart1.Series.Add(seriesArray[i]);
+                series.Points.Add(pointsArray[i]);
+            }
+
+            var re_maximos = Gala.viewMaxVentacomprador.Get();
+            re_maximos.ForEach(a => {
+                dataGridView4.Rows.Add(new object[] {
+                    a.NombreCompleto,
+                    a.Monto
+                });
+            });
+        }
         private void button1_Click(object sender, EventArgs e)
         {
             RefreshAbonos(true);
@@ -136,6 +168,8 @@ namespace GalaDesktop
                         Venta.Modificado
                     });
                 });
+
+                label4.Text = $"Venta:  ${ListaVentas.Sum(a => a.Monto).ToString(specifier, culture)}";
                 #endregion
             }
             else
@@ -437,6 +471,144 @@ namespace GalaDesktop
                 var row = dataGridView2.Rows[e.RowIndex];
                 row.Cells[2].Value = producto.Descripcion;
             }
+        }
+
+        private void button7_Click(object sender, EventArgs e)
+        {
+            DialogResult pregunta = MessageBox.Show("¿Deseas guardar los cambios de realizados?", "Gala", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (pregunta == DialogResult.Yes)
+            {
+                Gala.StartTransaction();
+                try
+                {
+                    for (int i = 0; i < dataGridView3.Rows.Count; i++)
+                    {
+                        var row = dataGridView3.Rows[i];
+                        if (row.Cells[0].Value is null)
+                        {
+                            if (row.Cells[1].Value != null)
+                            {
+                                var re_coprador = new Comprador();
+                                re_coprador.NombreCompleto = (string)row.Cells[1].Value;
+                                re_coprador.Activo = true;
+                                Gala.Comprador.Element = re_coprador;
+                                if (!Gala.Comprador.Add())
+                                {
+                                    throw new GalaManager1.Exceptions.Excep
+                                    {
+                                        ErrorCode = 100,
+                                        Description = "Error al guardar",
+                                        Category = GalaManager1.Exceptions.TypeException.Error
+                                    };
+                                }
+                            }
+                        }
+                        else
+                        {
+                            var re_coprador = Gala.Comprador.Get((int)row.Cells[0].Value);
+                            if(re_coprador != null)
+                            {
+                                re_coprador.NombreCompleto = (string)row.Cells[1].Value;
+                                Gala.Comprador.Element = re_coprador;
+                                if (!Gala.Comprador.Update())
+                                {
+                                    throw new GalaManager1.Exceptions.Excep
+                                    {
+                                        ErrorCode = 100,
+                                        Description = "Error al guardar",
+                                        Category = GalaManager1.Exceptions.TypeException.Error
+                                    };
+                                }
+                            }
+                        }
+                    }
+                    if (ListaCompradorEliminados != null && ListaCompradorEliminados.Count > 0)
+                    {
+                        ListaCompradorEliminados.ForEach(ab => {
+                            var re_venta = Gala.Comprador.Get(ab);
+                            if (re_venta != null)
+                            {
+                                re_venta.Activo = false;
+                                Gala.Comprador.Element = re_venta;
+                                if (!Gala.Comprador.Delete())
+                                {
+                                    throw new GalaManager1.Exceptions.Excep
+                                    {
+                                        ErrorCode = 100,
+                                        Description = "Error al guardar",
+                                        Category = GalaManager1.Exceptions.TypeException.Error
+                                    };
+                                }
+                            }
+                        });
+                    }
+                    ClientesRefresh(true);
+                    if (ListaCompradorEliminados != null)
+                    {
+                        ListaCompradorEliminados.Clear();
+                    }
+                    Funciones.ComboRender(cmb_Comprador, Gala.Comprador.GetOpenquery("Where activo = 1","order by nombrecompleto asc"), "IdComprador", "NombreCompleto");
+                    Gala.Commit();
+                }
+                catch (GalaManager1.Exceptions.Excep ex)
+                {
+                    Gala.RollBack();
+                    Gala.ReOpenConection();
+                    if (ex.Category == GalaManager1.Exceptions.TypeException.Info)
+                        MessageBox.Show(ex.Message, "Gala information", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    if (ex.Category == GalaManager1.Exceptions.TypeException.Error)
+                        MessageBox.Show(ex.Message, "Gala error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+
+        private void button8_Click(object sender, EventArgs e)
+        {
+            ClientesRefresh(true);
+        }
+
+        private void ClientesRefresh(bool refreshForce = false)
+        {
+            if (refreshForce)
+            {
+                ListaCompradores = Gala.Comprador.GetOpenquery("where activo = 1", "order by nombrecompleto asc");
+            }
+
+            if(ListaCompradores != null)
+            {
+                dataGridView3.Rows.Clear();
+
+                ListaCompradores.ForEach(Venta => {
+                    dataGridView3.Rows.Add(new object[] {
+                        Venta.IdComprador,
+                        Venta.NombreCompleto,
+                        Venta.Activo
+                    });
+                });
+            }
+        }
+
+        private void dataGridView3_UserDeletedRow(object sender, DataGridViewRowEventArgs e)
+        {
+            if (ListaCompradorEliminados is null)
+            {
+                ListaCompradorEliminados = new List<int>();
+            }
+            string id = e.Row.Cells[0].Value + "";
+            if (!string.IsNullOrEmpty(id))
+            {
+                ListaCompradorEliminados.Add(Int32.Parse(id));
+            }
+        }
+
+        private void button6_Click(object sender, EventArgs e)
+        {
+            ClientesRefresh();        
+        }
+
+        private void button9_Click(object sender, EventArgs e)
+        {
+            LoadDashboard();
         }
     }
 }

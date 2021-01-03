@@ -371,6 +371,40 @@ namespace DbManagerDark1.DbManager
                 throw new DarkExceptionSystem(string.Format("Exception - {0}", ex.Message));
             }
         }
+        public object GetObjectValue(string sqlStatement)
+        {
+            try
+            {
+                CheckConnection();
+                if (IsTracsactionActive)
+                {
+                    using (MySqlCommand MySqlCommand = new MySqlCommand(sqlStatement, SqlConnection, tran))
+                    {
+                        return MySqlCommand.ExecuteScalar();
+                    }
+                }
+                else
+                {
+                    using (MySqlCommand MySqlCommand = new MySqlCommand(sqlStatement, SqlConnection))
+                    {
+                        return MySqlCommand.ExecuteScalar();
+                    }
+                }
+
+            }
+            catch (MySqlException ex)
+            {
+                throw new DarkExceptionSystem(string.Format("SqlException - {0}", ex.Message));
+            }
+            catch (DarkExceptionSystem ex)
+            {
+                throw new DarkExceptionSystem(string.Format("SAP_Excepcion - {0}", ex.Message));
+            }
+            catch (Exception ex)
+            {
+                throw new DarkExceptionSystem(string.Format("Exception - {0}", ex.Message));
+            }
+        }
         public string GetStringValue(string sqlStatement)
         {
             try

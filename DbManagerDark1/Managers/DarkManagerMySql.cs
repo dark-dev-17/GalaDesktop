@@ -162,6 +162,10 @@ namespace DbManagerDark1.Managers
         {
             return dBConnection.GetIntegerValue(string.Format("select max(Id{0}) from {0}", Nametable));
         }
+        public object GetColun(string format)
+        {
+            return dBConnection.GetIntegerValue(format);
+        }
         public int Count(string where)
         {
             return dBConnection.GetIntegerValue(string.Format("select count(*) from {0} {1}", Nametable, where));

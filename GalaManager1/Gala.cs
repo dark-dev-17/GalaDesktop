@@ -19,6 +19,7 @@ namespace GalaManager1
         public DarkManagerMySQL<Abono> Abono { get; internal set; }
         public DarkManagerMySQL<Venta> Venta { get; internal set; }
         public DarkManagerMySQL<Producto> Producto { get; internal set; }
+        public DarkManagerMySQL<viewMaxVentacomprador> viewMaxVentacomprador { get; internal set; }
         #endregion
 
         #region Metodos
@@ -41,6 +42,8 @@ namespace GalaManager1
                 Venta = new DarkManagerMySQL<Venta>(Dbgala);
             if (galaObject == GalaObject.Producto)
                 Producto = new DarkManagerMySQL<Producto>(Dbgala);
+            if (galaObject == GalaObject.viewMaxVentacomprador)
+                viewMaxVentacomprador = new DarkManagerMySQL<viewMaxVentacomprador>(Dbgala);
         }
         /// <summary>
         /// Conectar
@@ -101,5 +104,6 @@ namespace GalaManager1
         Abono = 5,
         Venta = 6,
         Producto = 7,
+        viewMaxVentacomprador = 8,
     }
 }
